@@ -7,14 +7,22 @@ mail for nodejs
 $ npm install x-mail --save
 ````
 
-
 ### Example
 ````javascript
-var x-mail = require('x-mail');
+const SMTP = require('x-mail/smtp');
+
+const client = new SMTP.Client({});
+
+client.send({
+  from: 'lsong@lsong.org',
+  to  : 'x-mail@lsong.org',
+
+  subject: 'Hello X-Mail',
+  content: 'Test Mail'
+}, function(err, reply){
+  console.log(err, reply);
+});
 ````
-
-### API
-
 
 ### Contributing
 - Fork this repo
