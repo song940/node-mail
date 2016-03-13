@@ -1,16 +1,43 @@
+'use strict';
 const dns = require('dns');
 const tcp = require('net');
-
-const Utils   = require('../lib/utils');
-const Message = require('./message');
-
-const CRLF = '\r\n';
-
 /**
- * [SMTPClient description]
+ * [CRLF description]
+ * @type {String}
  */
-function SMTPClient(options){
-
+const CRLF = '\r\n';
+/**
+ * [address description]
+ * @param  {[type]} address [description]
+ * @return {[type]}         [description]
+ */
+function q(address){
+  return '<' + address + '>';
+};
+/**
+ * [kv description]
+ * @param  {[type]} k [description]
+ * @param  {[type]} v [description]
+ * @return {[type]}   [description]
+ */
+function kv(k, v){
+  return [ k, v ].join(':');
+};
+/**
+ * [parseAddress description]
+ * @param  {[type]} address [description]
+ * @return {[type]}         [description]
+ */
+function parseAddress(address){
+  var host = (address.replace(/^(.+@)/g,'').replace(/>/,''));
+  var user = (address.match(/^(?:.+<)?(.+)@.+$/)[1]);
+  var name = (address.match(/^(.+)<.+>$/) || [])[1] || '';
+  return {
+    host    : host,
+    user    : user,
+    name    : name,
+    address : [ user, host ].join('@')
+  };
 };
 /**
  * [function description]
@@ -18,7 +45,7 @@ function SMTPClient(options){
  * @param  {Function} callback [description]
  * @return {[type]}            [description]
  */
-SMTPClient.prototype.connectMx = function(domain, callback){
+function connectMx(domain, callback){
   dns.resolveMx(domain, function(err, mx){
     if(err) return callback(err);
     mx.sort(function(a, b){ a.priority < b. priority });
@@ -45,19 +72,19 @@ SMTPClient.prototype.connectMx = function(domain, callback){
  * @param  {Function} callback   [description]
  * @return {[type]}              [description]
  */
-SMTPClient.prototype.post = function(domain, from, recipients, body, callback){
+function post(domain, from, recipients, body, callback){
   var queue = [], step = 0;
   function command(cmd, argv){
     return cmd + (argv ? (' ' + argv) : '');
   };
-  queue.push(command('MAIL', Utils.kv('FROM', Utils.q(from.address))));
+  queue.push(command('MAIL', kv('FROM', q(from.address))));
   queue = queue.concat(recipients.map(function(recipient){
-    return command('RCPT', Utils.kv('TO', Utils.q(recipient)));
+    return command('RCPT', kv('TO', q(recipient)));
   }));
   queue.push('DATA');
   queue.push('QUIT');
   queue.push('');
-  this.connectMx(domain, function(err, sock){
+  connectMx(domain, function(err, sock){
     if(err) return callback(err);
     /**
      * [w description]
@@ -136,21 +163,58 @@ SMTPClient.prototype.post = function(domain, from, recipients, body, callback){
  * @param  {Function} callback [description]
  * @return {[type]}            [description]
  */
-SMTPClient.prototype.send = function(mail, callback){
-  var self = this, body = new Message(mail), groupByHost = {}, recipients = [];
+ module.exports = function send(mail, callback){
+  var body = new Message(mail), groupByHost = {}, recipients = [];
   if(mail.to) recipients.push(mail.to);
   if(mail.cc) recipients.push(mail.cc);
   if(mail.bcc)recipients.push(mail.bcc);
   recipients = recipients.map(function(recipient){
-    var address = Utils.parseAddress(recipient);
+    var address = parseAddress(recipient);
     (groupByHost[ address.host ] ||
     (groupByHost[ address.host ] = [])).push(address.address);
     return address.address;
   });
-  var from = Utils.parseAddress(mail.from);
+  var from = parseAddress(mail.from);
   Object.keys(groupByHost).map(function(domain){
-    self.post(domain, from, groupByHost[domain], body, callback);
+    post(domain, from, groupByHost[domain], body, callback);
   });
 };
 
-module.exports = SMTPClient;
+/**
+ * [function description]
+ * @param  {[type]} mail [description]
+ * @return {[type]}      [description]
+ */
+function Message(mail){
+  this.data = [];
+  this.header('From' , mail.from);
+  if(mail.to) this.header('To'   , Array.isArray(mail.to) ? mail.to.join(',') : mail.to);
+  if(mail.cc) this.header('Cc'   , Array.isArray(mail.cc) ? mail.cc.join(',') : mail.cc);
+  this.header('Subject'                  , mail.subject);
+  this.header('MIME-Version'             , mail.version || '1.0');
+  this.header('Message-ID'               , q(mail.id || (+new Date)));
+  this.header('Content-Type'             , 'text/plain; charset=utf-8');
+  this.header('Content-Transfer-Encoding', mail.encoding || (mail.encoding = 'base64'));
+  for(var name in mail.headers){
+    this.header(name, mail.headers[name]);
+  }
+  this.data.push('');
+  this.data.push(new Buffer(mail.content).toString(mail.encoding));
+  return this;
+};
+/**
+ * [function description]
+ * @param  {[type]} name  [description]
+ * @param  {[type]} value [description]
+ * @return {[type]}       [description]
+ */
+Message.prototype.header = function(name, value){
+  this.data.push(kv(name, value));
+};
+/**
+ * [function description]
+ * @return {[type]} [description]
+ */
+Message.prototype.toString = function(){
+  return this.data.join(CRLF);
+};

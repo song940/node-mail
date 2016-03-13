@@ -1,16 +1,11 @@
-const SMTP = require('../../smtp');
+const send = require('../../smtp/client');
 
-const client = new SMTP.Client({});
+send({
+  from : 'Lsong<song940@163.com>' ,
+  to   : 'song940@localhost'      ,
 
-client.send({
-  from: 'Lsong<song940@163.com>',
-  // to  : 'Liu song<song940@163.com>',
-  // cc  : 'lsong<song940@me.com>' ,
-  to : '1323397889@qq.com' ,
-
-  subject: '测试邮件'      ,
-  content: '测试邮件'
+  subject: '天气不错',
+  content: '今天天气不错，一起出去旅行吧。'
 }, function(err, reply){
   console.log(err, reply);
 });
-//
