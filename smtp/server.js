@@ -38,6 +38,7 @@ SMTPServer.prototype.process = function(callback, sock){
     msg += (line + CRLF);
     switch(line.split(/\s/)[0]){
       case 'HELO':
+      case 'EHLO':
         response(250, 'OK');
         msg = '';
         break;
