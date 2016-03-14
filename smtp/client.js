@@ -1,6 +1,9 @@
 'use strict';
 const dns = require('dns');
 const tcp = require('net');
+
+// https://tools.ietf.org/html/rfc821
+
 /**
  * [CRLF description]
  * @type {String}
