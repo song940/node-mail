@@ -11,9 +11,9 @@ $ npm install x-mail --save
 ### Example
 
 ````javascript
-const SMTP = require('x-mail/smtp');
+const smtp = require('x-mail/smtp');
 
-const client = new SMTP.Client({});
+const client = new smtp.Client({});
 
 client.send({
   from: 'lsong@lsong.org',
@@ -28,7 +28,7 @@ client.send({
 smtp server
 
 ```js
-const smtp = require('../../smtp');
+const smtp = require('x-mail/smtp');
 
 const PORT   = 25;
 const server = new smtp.Server({}, function(message){

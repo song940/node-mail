@@ -49,22 +49,26 @@ function parseAddress(address){
  * @return {[type]}            [description]
  */
 function connectMx(domain, callback){
-  dns.resolveMx(domain, function(err, mx){
-    if(err) return callback(err);
-    mx.sort(function(a, b){ a.priority < b. priority });
-    if(!mx || !mx.length) return callback(new Error('can not resolve Mx of <' + domain + '>'));
-    (function connect(i){
-      if (i >= mx.length) return callback(new Error('can not connect to any SMTP server'));
-      var sock = tcp.createConnection(25, mx[ i ].exchange).on('error', function(err){
-        console.error('Error on connectMx for: ', mx[ i ], err);
+  var endpoints = [ domain ];
+  dns.resolveMx(domain, function(err, records){
+    //
+    endpoints = (records || []).sort(function(a, b){ a.priority < b. priority }).map(function(mx){
+      return mx.exchange;
+    }).concat(endpoints);
+    //
+    ;(function connect(i){
+      if (i >= endpoints.length) return callback(new Error('can not connect to any SMTP server'));
+      var sock = tcp.createConnection(25, endpoints[ i ]).on('error', function(err){
+        console.error('Error on connectMx for: ', endpoints[ i ], err);
         connect(++i);
       }).on('connect', function(){
-        console.log("MX connection created: ", mx[i].exchange);
+        console.log("MX connection created: ", endpoints[i]);
         sock.removeAllListeners('error');
         callback(null, sock);
       });
     })(0);
   });
+  
 };
 /**
  * [function description]
