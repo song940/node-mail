@@ -1,7 +1,3 @@
-EHLO smtpbg11.qq.com
-MAIL FROM: <liu.song940@qq.com>
-RCPT TO: <hi@lsong.org>
-DATA
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
 	t=1457840113; bh=v6ikesb9nqx30MV4TzWjZtSH6l1gFPXY8aYfFqAdGSY=;
 	h=From:To:Subject:Mime-Version:Content-Type:Content-Transfer-Encoding:Date:Message-ID;
@@ -40,12 +36,11 @@ dGVzdCBtYWls
 
 ------=_NextPart_56E4DF6D_119E8C78_06377FE2
 Content-Type: text/html;
-	charset="ISO-8859-1"
+	charset="ISO-8859-2"
 Content-Transfer-Encoding: base64
 
 PGRpdj50ZXN0IG1haWw8L2Rpdj4=
 
 ------=_NextPart_56E4DF6D_119E8C78_06377FE2--
 
-.
-QUIT
+
