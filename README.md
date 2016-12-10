@@ -1,17 +1,17 @@
-## x-mail ![npm](https://badge.fury.io/js/x-mail.png)
+## mail2 ![npm](https://badge.fury.io/js/x-mail.png)
 
 mail for nodejs
 
 ### Installation
 
 ````
-$ npm install x-mail --save
+$ npm i mail2
 ````
 
 ### Example
 
 ````javascript
-const smtp = require('x-mail/smtp');
+const smtp = require('mail2/smtp');
 
 const client = new smtp.Client({});
 
@@ -28,7 +28,7 @@ client.send({
 smtp server
 
 ```js
-const smtp = require('x-mail/smtp');
+const smtp = require('mail2/smtp');
 
 const PORT   = 25;
 const server = new smtp.Server({}, function(message){
@@ -36,6 +36,25 @@ const server = new smtp.Server({}, function(message){
 }).listen(PORT, function(err){
   console.log('smtp server is running at %s', PORT);
 });
+```
+
+mime
+
+```js
+const MIME = require('mail2/mime');
+
+var mime = new MIME();
+
+mime.on('header', function(headers){
+  console.log('headers', headers);
+});
+
+mime.on('body', function(body){
+  console.log('body', body);
+});
+
+fs.createReadStream('mail.txt').pipe(mime);
+
 ```
 
 ### Contributing

@@ -1,49 +1,37 @@
-
 const util   = require('util');
 const Stream = require('stream');
 
-const CRLF = '\n';
-
-function Message(mail){
+function MIME(){
   this.buffer = '';
   this.headers = {};
   this.body = {};
-  this.data = [];
-  if(mail){
-    this.header('From' , mail.from);
-    if(mail.to) this.header('To'   , Array.isArray(mail.to) ? mail.to.join(',') : mail.to);
-    if(mail.cc) this.header('Cc'   , Array.isArray(mail.cc) ? mail.cc.join(',') : mail.cc);
-    this.header('Subject'                  , mail.subject);
-    this.header('MIME-Version'             , mail.version || '1.0');
-    this.header('Message-ID'               , q(mail.id || (+new Date)));
-    this.header('Content-Type'             , 'text/plain; charset=utf-8');
-    this.header('Content-Transfer-Encoding', mail.encoding || (mail.encoding = 'base64'));
-    for(var name in mail.headers){
-      this.header(name, mail.headers[name]);
-    }
-    this.data.push('');
-    this.data.push(new Buffer(mail.content).toString(mail.encoding));
-  }
   return this;
 };
 
-util.inherits(Message, Stream);
+MIME.CRLF = '\n';
 
+util.inherits(MIME, Stream);
+
+MIME.parse = function(content){
+  var mime = new MIME();
+  mime.end(content);
+  return mime;
+};
 
 /**
  * [write description]
  * @param  {[type]} buf [description]
  * @return {[type]}     [description]
  */
-Message.prototype.write = function(buf){
+MIME.prototype.write = function(buf){
   this.buffer += buf;
-  var parts = this.buffer.split(CRLF + CRLF);
+  var parts = this.buffer.split(MIME.CRLF + MIME.CRLF);
   if(parts.length >= 2){
     var header = parts.shift();
     this.headers = this.parseHeader(header);
     this.emit('header', this.headers);
   }
-  this.buffer = parts.join(CRLF + CRLF);
+  this.buffer = parts.join(MIME.CRLF + MIME.CRLF);
   return this;
 };
 
@@ -52,7 +40,7 @@ Message.prototype.write = function(buf){
  * @param  {[type]} buf [description]
  * @return {[type]}     [description]
  */
-Message.prototype.end = function(buf){
+MIME.prototype.end = function(buf){
   if(buf) this.write(buf);
   this.body = this.parseBody(this.buffer);
   this.emit('body', this.body);
@@ -64,12 +52,12 @@ Message.prototype.end = function(buf){
  * @param  {[type]} header [description]
  * @return {[type]}        [description]
  */
-Message.prototype.parseHeader = function(header){
+MIME.prototype.parseHeader = function(header){
   var headers = {};
   function trim(s){
     return s.replace(/^"|"$/, '');
   }
-  header.replace(/\n\t/g, '').split(CRLF).filter(function(line){
+  header.replace(/\n\t/g, '').split(MIME.CRLF).filter(function(line){
     return !!line;
   }).forEach(function(line){
     var m = line.match(/^(.+?):\s?(.*)/);
@@ -95,7 +83,7 @@ Message.prototype.parseHeader = function(header){
  * @param  {[type]} buf [description]
  * @return {[type]}     [description]
  */
-Message.prototype.parseBody = function(content){
+MIME.prototype.parseBody = function(content){
   var contentType = this.headers[ 'Content-Type' ];
   var self = this, i=0, j=-1, h = '', body = { _: '' };
   var lines = content.split('\n');
@@ -124,7 +112,7 @@ Message.prototype.parseBody = function(content){
         h = '';
         continue;
       }
-      h += line + CRLF;
+      h += line + MIME.CRLF;
     }
     if(i == 2){ // body
       body[ j ].body += line;
@@ -139,17 +127,10 @@ Message.prototype.parseBody = function(content){
  * @param  {[type]} value [description]
  * @return {[type]}       [description]
  */
-Message.prototype.header = function(name, value){
-  this.data.push(kv(name, value));
-};
-/**
- * [function description]
- * @return {[type]} [description]
- */
-Message.prototype.toString = function(){
-  return this.data.join(CRLF);
+MIME.prototype.header = function(name, value){
+  this.headers[ name ] = value;
+  return this;
 };
 
-
-module.exports = Message;
+module.exports = MIME;
 
