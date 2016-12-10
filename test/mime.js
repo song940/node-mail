@@ -37,4 +37,11 @@ describe('MIME', function(){
     assert.equal(mime.body._, 'This is a multi-part message in MIME format.');
   });
 
+  it('MIME#lookup', function(){
+
+    assert.equal(MIME.lookup('a.txt'), 'text/plain');
+    assert.deepEqual(MIME.extension('text/plain'), [ 'txt', 'text', 'conf', 'def', 'list', 'log', 'in', 'ini' ]);
+
+  });
+
 });

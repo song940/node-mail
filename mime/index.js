@@ -1,5 +1,6 @@
 const util   = require('util');
 const Stream = require('stream');
+const types  = require('./types');
 
 /**
  * [MIME description]
@@ -12,8 +13,30 @@ function MIME(){
 };
 
 MIME.CRLF = '\n';
+MIME.TYPES = types;
 
 util.inherits(MIME, Stream);
+
+/**
+ * [lookup description]
+ * @param  {[type]} filename [description]
+ * @return {[type]}          [description]
+ */
+MIME.lookup = function(filename){
+  var ext = filename.replace(/.*[\.\/\\]/, '').toLowerCase();
+  return Object.keys(MIME.TYPES).filter(function(type){
+    var def = MIME.TYPES[ type ];
+    return ~(def.extensions||[]).indexOf(ext);
+  })[0];
+};
+/**
+ * [extension description]
+ * @param  {[type]} type [description]
+ * @return {[type]}      [description]
+ */
+MIME.extension = function(type){
+  return MIME.TYPES[ type ].extensions;
+};
 
 /**
  * [parse description]

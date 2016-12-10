@@ -1,2 +1,4 @@
-const kelp = require('kelp');
-const http = require('http');
+const MIME = require('../mime');
+
+
+console.log( MIME.extension( MIME.lookup('a.txt') ) );
