@@ -18,6 +18,26 @@ MIME.parse = function(content){
   return mime;
 };
 
+MIME.kv = function(key, value){
+  return [ key, value ].join(':');
+};
+
+MIME.q = function(address){
+  return '<' + address + '>';
+};
+
+MIME.parseAddress = function(address){
+  var host = (address.replace(/^(.+@)/g,'').replace(/>/,''));
+  var user = (address.match(/^(?:.+<)?(.+)@.+$/)[1]);
+  var name = (address.match(/^(.+)<.+>$/) || [])[1] || '';
+  return {
+    host    : host,
+    user    : user,
+    name    : name,
+    address : [ user, host ].join('@')
+  };
+};
+
 /**
  * [write description]
  * @param  {[type]} buf [description]

@@ -7,7 +7,7 @@
     "example": "example"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
@@ -24,5 +24,8 @@
     "pop",
     "smtp",
     "imap"
-  ]
+  ],
+  "dependencies": {
+    "mocha": "^3.2.0"
+  }
 }
