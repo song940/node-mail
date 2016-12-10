@@ -6,6 +6,7 @@ const types  = require('./types');
  * [MIME description]
  */
 function MIME(){
+  Stream.call(this);
   this.buffer = '';
   this.headers = {};
   this.body = {};
@@ -16,6 +17,49 @@ MIME.CRLF = '\n';
 MIME.TYPES = types;
 
 util.inherits(MIME, Stream);
+
+/**
+ * [function description]
+ * @param  {[type]} name  [description]
+ * @param  {[type]} value [description]
+ * @return {[type]}       [description]
+ */
+MIME.prototype.header = function(name, value){
+  this.headers[ name ] = value;
+  return this;
+};
+
+/**
+ * [write description]
+ * @param  {[type]} buf [description]
+ * @return {[type]}     [description]
+ */
+MIME.prototype.write = function(buf){
+  this.buffer += buf;
+  var LINE = MIME.CRLF + MIME.CRLF;
+  var sp = this.buffer.indexOf(LINE);
+  if(sp > -1){
+    var str = this.buffer.substr(0, sp);
+    this.headers = MIME.parseHeaders(str);
+    this.emit('header', this.headers);
+    this.buffer = this.buffer.substr(sp);
+  }
+  return this;
+};
+
+/**
+ * [end description]
+ * @param  {[type]} buf [description]
+ * @return {[type]}     [description]
+ */
+MIME.prototype.end = function(buf){
+  if(buf) this.write(buf);
+  var contentType = this.headers[ 'Content-Type' ];
+  this.body = MIME.parseBody(this.buffer, contentType);
+  this.emit('body', this.body);
+  return this;
+};
+
 
 /**
  * [lookup description]
@@ -85,89 +129,66 @@ MIME.parseAddress = function(address){
   };
 };
 /**
- * [parseHeader description]
- * @param  {[type]} str [description]
- * @return {[type]}     [description]
- */
-MIME.parseHeader = function(header){
-  var m = header.split(/:\s?/);
-  var k = m[0];
-  var v = m.slice(1).join('');
-  return { key: k, value: MIME.parseHeaderValue(v) } ;
-}
-/**
- * [parseHeaderValue description]
- * @param  {[type]} value [description]
- * @return {[type]}       [description]
- */
-MIME.parseHeaderValue = function(value){
-  var k = value.split(/;\s?/), h = {};
-  k.forEach(function(t){
-    var kv = MIME.trim(t).match(/^(.+?)=(.*)$/);
-    if(kv){
-      h[ kv[1] ] = MIME.trim(kv[2]);
-    }else{
-      h._ = MIME.trim(t);
-    }
-  });
-  return h;
-};
-
-/**
- * [write description]
- * @param  {[type]} buf [description]
- * @return {[type]}     [description]
- */
-MIME.prototype.write = function(buf){
-  this.buffer += buf;
-  var parts = this.buffer.split(MIME.CRLF + MIME.CRLF);
-  if(parts.length >= 2){
-    var header = parts.shift();
-    this.headers = this.parseHeader(header);
-    this.emit('header', this.headers);
-  }
-  this.buffer = parts.join(MIME.CRLF);
-  return this;
-};
-
-/**
- * [end description]
- * @param  {[type]} buf [description]
- * @return {[type]}     [description]
- */
-MIME.prototype.end = function(buf){
-  if(buf) this.write(buf);
-  this.body = this.parseBody(this.buffer);
-  this.emit('body', this.body);
-  return this;
-};
-
-/**
- * [function description]
- * @param  {[type]} name  [description]
- * @param  {[type]} value [description]
- * @return {[type]}       [description]
- */
-MIME.prototype.header = function(name, value){
-  this.headers[ name ] = value;
-  return this;
-};
-
-/**
- * [parseHeader description]
+ * [parseHeaders description]
  * @param  {[type]} header [description]
  * @return {[type]}        [description]
  */
-MIME.prototype.parseHeader = function(header){
+MIME.parseHeaders = function(header){
   return header
   .replace(/\n\t/g, '')
   .split(MIME.CRLF)
   .filter(MIME.filter)
   .map(MIME.parseHeader)
   .reduce(function(item, cur){
-    item[ cur.key ] = cur.value;
+    for(var k in cur) item[k] = cur[k];
     return item;
   }, {});
+};
+
+/**
+ * [parseHeader description]
+ * @param  {[type]} str [description]
+ * @return {[type]}     [description]
+ */
+MIME.parseHeader = function(str){
+  var h = {};
+  var p = str.indexOf(':');
+  if(p > -1){
+    var k  = str.substr(0, p).trim();
+    var v  = str.substr(++p).trim();
+    h[ k ] = MIME.parseHeaderValue(v);
+  }
+  return h;
+};
+
+/**
+ * [parseHeaderValue description]
+ * @param  {[type]} value [description]
+ * @return {[type]}       [description]
+ */
+MIME.parseHeaderValue = function(str){
+  var h = {};
+  str.split(/;\s?/).map(function(option){
+    option = MIME.trim(option);
+    var kv = option.match(/^(.+?)=(.*)$/);
+    if(kv){
+      h[ MIME.trim(kv[1]) ] = MIME.trim(kv[2]);
+    }else{
+      h._ = option;
+    }
+  });
+  return h;
+};
+
+/**
+ * [PARSE_STATUS description]
+ * @type {Object}
+ */
+MIME.PARSE_STATUS = {
+  BODY        : 0x00,
+  PART_HEADER : 0x01,
+  PART_BODY   : 0x02,
+  END         : -1
 };
 
 /**
@@ -175,42 +196,39 @@ MIME.prototype.parseHeader = function(header){
  * @param  {[type]} buf [description]
  * @return {[type]}     [description]
  */
-MIME.prototype.parseBody = function(content, contentType){
-  var self = this, i=0, j=-1, h = '', body = { _: '' };
+MIME.parseBody = function(content, contentType){
+  var j=-1, h='', body = { _: '' };
+  var status = MIME.PARSE_STATUS.BODY;
   var lines = (content || '').toString().split(MIME.CRLF);
-  contentType = contentType || this.headers[ 'Content-Type' ];
   if(typeof contentType === 'string'){
     contentType = MIME.parseHeaderValue(contentType);
   }
   while(lines.length){
     line = lines.shift();
-
-    if(line == ('--' + contentType.boundary + '--')){
-      i = -1;
+    if(line == '--$--'.replace('$', contentType.boundary)){
+      status = MIME.PARSE_STATUS.END;
       break;
     }
-    if(line == '--' + contentType.boundary){
-      i = 1;
+    if(line == '--$'.replace('$', contentType.boundary)){
+      status = MIME.PARSE_STATUS.PART_HEADER;
       continue;
     }
-
-    if(i == 0){ // initial
-      body._ += line;
-    }
-
-    if(i == 1){ // header
-      if(line == ''){
-        i++;
-        j++;
-        body[ j ] = { headers: {},  body: '' };
-        body[ j ].headers = self.parseHeader(h);
-        h = '';
-        continue;
-      }
-      h += line + MIME.CRLF;
-    }
-    if(i == 2){ // body
-      body[ j ].body += line;
+    switch(status){
+      case MIME.PARSE_STATUS.BODY:
+        body._ += line;
+        break;
+      case MIME.PARSE_STATUS.PART_HEADER:
+        if(line.trim() == ''){
+          status = MIME.PARSE_STATUS.PART_BODY;
+          body[ ++j ] = { body: '', headers: MIME.parseHeaders(h) };
+          h = '';
+          continue;
+        }
+        h += line + MIME.CRLF;
+        break;
+      case MIME.PARSE_STATUS.PART_BODY:
+        body[j].body += line;  
+        break;
     }
   }
   return body;

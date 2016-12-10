@@ -35,6 +35,8 @@ describe('MIME', function(){
     assert.equal(mime.headers['Subject']._, 'test');
     assert.equal(mime.headers['Message-ID']._, '<tencent_4F34D055476789304B5F8318@qq.com>');
     assert.equal(mime.body._, 'This is a multi-part message in MIME format.');
+    assert.equal(mime.body[1].headers['Content-Transfer-Encoding']._, 'base64');
+    assert.equal(mime.body[1].body, 'PGRpdj50ZXN0IG1haWw8L2Rpdj4=');
   });
 
   it('MIME#lookup', function(){
