@@ -1,6 +1,9 @@
 const util   = require('util');
 const Stream = require('stream');
 
+/**
+ * [MIME description]
+ */
 function MIME(){
   this.buffer = '';
   this.headers = {};
@@ -12,20 +15,41 @@ MIME.CRLF = '\n';
 
 util.inherits(MIME, Stream);
 
-MIME.parse = function(content){
+/**
+ * [parse description]
+ * @param  {[type]} content     [description]
+ * @param  {[type]} contentType [description]
+ * @return {[type]}             [description]
+ */
+MIME.parse = function(content, contentType){
   var mime = new MIME();
-  mime.end(content);
-  return mime;
-};
-
-MIME.kv = function(key, value){
-  return [ key, value ].join(':');
+  if(typeof contentType === 'undefined'){
+    return mime.end(content);
+  }else{
+    return mime.parseBody(content, contentType); 
+  }
 };
 
 MIME.q = function(address){
   return '<' + address + '>';
 };
 
+MIME.kv = function(key, value){
+  return [ key, value ].join(':');
+};
+
+MIME.trim = function(s){
+  return s.replace(/^"|"$/, '');
+}
+
+MIME.filter = function(str){
+  return !!str.trim();
+};
+/**
+ * [parseAddress description]
+ * @param  {[type]} address [description]
+ * @return {[type]}         [description]
+ */
 MIME.parseAddress = function(address){
   var host = (address.replace(/^(.+@)/g,'').replace(/>/,''));
   var user = (address.match(/^(?:.+<)?(.+)@.+$/)[1]);
@@ -36,6 +60,34 @@ MIME.parseAddress = function(address){
     name    : name,
     address : [ user, host ].join('@')
   };
+};
+/**
+ * [parseHeader description]
+ * @param  {[type]} str [description]
+ * @return {[type]}     [description]
+ */
+MIME.parseHeader = function(header){
+  var m = header.split(/:\s?/);
+  var k = m[0];
+  var v = m.slice(1).join('');
+  return { key: k, value: MIME.parseHeaderValue(v) } ;
+}
+/**
+ * [parseHeaderValue description]
+ * @param  {[type]} value [description]
+ * @return {[type]}       [description]
+ */
+MIME.parseHeaderValue = function(value){
+  var k = value.split(/;\s?/), h = {};
+  k.forEach(function(t){
+    var kv = MIME.trim(t).match(/^(.+?)=(.*)$/);
+    if(kv){
+      h[ kv[1] ] = MIME.trim(kv[2]);
+    }else{
+      h._ = MIME.trim(t);
+    }
+  });
+  return h;
 };
 
 /**
@@ -51,7 +103,7 @@ MIME.prototype.write = function(buf){
     this.headers = this.parseHeader(header);
     this.emit('header', this.headers);
   }
-  this.buffer = parts.join(MIME.CRLF + MIME.CRLF);
+  this.buffer = parts.join(MIME.CRLF);
   return this;
 };
 
@@ -68,45 +120,45 @@ MIME.prototype.end = function(buf){
 };
 
 /**
+ * [function description]
+ * @param  {[type]} name  [description]
+ * @param  {[type]} value [description]
+ * @return {[type]}       [description]
+ */
+MIME.prototype.header = function(name, value){
+  this.headers[ name ] = value;
+  return this;
+};
+
+/**
  * [parseHeader description]
  * @param  {[type]} header [description]
  * @return {[type]}        [description]
  */
 MIME.prototype.parseHeader = function(header){
-  var headers = {};
-  function trim(s){
-    return s.replace(/^"|"$/, '');
-  }
-  header.replace(/\n\t/g, '').split(MIME.CRLF).filter(function(line){
-    return !!line;
-  }).forEach(function(line){
-    var m = line.match(/^(.+?):\s?(.*)/);
-    var k = m[2].split(/;\s?/);
-    var h = {};
-    k.forEach(function(t){
-      var kv = trim(t).match(/^(.+?)=(.*)$/);
-      if(kv){
-        h[ kv[1] ] = trim(kv[2]);
-      }else{
-        h._ = trim(t);
-      }
-    });
-    headers[ m[1] ] = h;
-  });
-  return headers;
+  return header
+  .replace(/\n\t/g, '')
+  .split(MIME.CRLF)
+  .filter(MIME.filter)
+  .map(MIME.parseHeader)
+  .reduce(function(item, cur){
+    item[ cur.key ] = cur.value;
+    return item;
+  }, {});
 };
-
-
 
 /**
  * [end description]
  * @param  {[type]} buf [description]
  * @return {[type]}     [description]
  */
-MIME.prototype.parseBody = function(content){
-  var contentType = this.headers[ 'Content-Type' ];
+MIME.prototype.parseBody = function(content, contentType){
   var self = this, i=0, j=-1, h = '', body = { _: '' };
-  var lines = content.split('\n');
+  var lines = (content || '').toString().split(MIME.CRLF);
+  contentType = contentType || this.headers[ 'Content-Type' ];
+  if(typeof contentType === 'string'){
+    contentType = MIME.parseHeaderValue(contentType);
+  }
   while(lines.length){
     line = lines.shift();
 
@@ -139,17 +191,6 @@ MIME.prototype.parseBody = function(content){
     }
   }
   return body;
-};
-
-/**
- * [function description]
- * @param  {[type]} name  [description]
- * @param  {[type]} value [description]
- * @return {[type]}       [description]
- */
-MIME.prototype.header = function(name, value){
-  this.headers[ name ] = value;
-  return this;
 };
 
 module.exports = MIME;
