@@ -8,31 +8,47 @@ const Message = require('../mime');
  * @docs https://tools.ietf.org/html/rfc821
  */
 function SMTP(options){
-
+  return this;
 }
-
+/**
+ * [connectMx description]
+ * @param  {[type]}   domain   [description]
+ * @param  {Function} callback [description]
+ * @return {[type]}            [description]
+ */
 function connectMx(domain, callback){
-  var endpoints = [ domain ];
-  dns.resolveMx(domain, function(err, records){
-    //
-    endpoints = (records || []).sort(function(a, b){ a.priority < b. priority }).map(function(mx){
-      return mx.exchange;
-    }).concat(endpoints);
-    //
-    ;(function connect(i){
-      console.log(endpoints[ i ]);
-      if (i >= endpoints.length) return callback(new Error('can not connect to any SMTP server'));
-      var sock = tcp.createConnection(25, endpoints[ i ]).on('error', function(err){
+  var endpoints = [];
+  function connect(i){
+    if (i >= endpoints.length) 
+      return callback(new Error('can not connect to any SMTP server'));
+    var sock = tcp.connect(25, endpoints[i], function(err){
+      if(err) {
         console.error('Error on connectMx for: ', endpoints[ i ], err);
-        connect(++i);
-      }).on('connect', function(){
-        console.log("MX connection created: ", endpoints[i]);
-        sock.removeAllListeners('error');
-        callback(null, sock);
-      });
-    })(0);
+        return connect(i++);
+      }
+      console.log("MX connection created: ", endpoints[ i ]);
+      callback(null, sock);
+    });
+  };
+
+  dns.resolveMx(domain, function(err, records){
+    endpoints = (records || []).sort(function(a, b){ 
+      return a.priority - b. priority;
+    }).map(function(mx){
+      return mx.exchange;
+    }).concat([ domain ]);
+    connect(0);
   });
-  
+};
+
+/**
+ * [send description]
+ * @param  {[type]} message [description]
+ * @return {[type]}         [description]
+ */
+SMTP.send = function(message){
+  var client = new SMTP.Client();
+  return client.send(message);
 };
 /**
  * [post description]
@@ -91,6 +107,7 @@ SMTP.prototype.post = function(domain, from, recipients, body, callback){
           w(body);
           w('');
           w('.');
+          w('');
           break;
         default:
           console.error('-x SMTP responds error code %s', code);
@@ -127,11 +144,15 @@ SMTP.prototype.post = function(domain, from, recipients, body, callback){
 
   });
 };
+
 /**
- * [send description]
- * @param  {[type]}   message  [description]
- * @param  {Function} callback [description]
- * @return {[type]}            [description]
+ * [post description]
+ * @param  {[type]}   domain     [description]
+ * @param  {[type]}   from       [description]
+ * @param  {[type]}   recipients [description]
+ * @param  {[type]}   body       [description]
+ * @param  {Function} callback   [description]
+ * @return {[type]}              [description]
  */
 SMTP.prototype.send = function(message, callback){
   var groupByHost = {}, recipients = [];
@@ -148,7 +169,9 @@ SMTP.prototype.send = function(message, callback){
   Object.keys(groupByHost).map(function(domain){
     this.post(domain, from, groupByHost[domain], message.content, callback);
   }.bind(this));
+  return this;
 };
+
 
 SMTP.Client = SMTP;
 SMTP.Server = require('./server');

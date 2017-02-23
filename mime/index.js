@@ -5,7 +5,7 @@ const types  = require('./types');
 /**
  * [MIME description]
  */
-function MIME(){
+function MIME(message){
   Stream.call(this);
   this.buffer = '';
   this.headers = {};
