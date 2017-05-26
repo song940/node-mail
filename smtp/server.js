@@ -76,6 +76,7 @@ SMTPServer.prototype.process = function(callback, sock){
   sock.on('error', function(err){
     console.log(err);
   }).on('data', function(chunk){
+    console.log(chunk);
     data += chunk;
     parts = data.split(CRLF);
     data = parts.pop();

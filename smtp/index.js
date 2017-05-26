@@ -2,6 +2,9 @@
 const dns     = require('dns');
 const tcp     = require('net');
 const Message = require('../mime');
+
+Message.CRLF = '\r\n';
+
 /**
  * [SMTP description]
  * @param {[type]} options [description]
@@ -19,7 +22,7 @@ function SMTP(options){
 function connectMx(domain, callback){
   var endpoints = [];
   function connect(i){
-    if (i >= endpoints.length) 
+    if (i >= endpoints.length)
       return callback(new Error('can not connect to any SMTP server'));
     var sock = tcp.connect(25, endpoints[i], function(err){
       if(err) {
@@ -32,7 +35,7 @@ function connectMx(domain, callback){
   };
 
   dns.resolveMx(domain, function(err, records){
-    endpoints = (records || []).sort(function(a, b){ 
+    endpoints = (records || []).sort(function(a, b){
       return a.priority - b. priority;
     }).map(function(mx){
       return mx.exchange;
@@ -79,7 +82,7 @@ SMTP.prototype.post = function(domain, from, recipients, body, callback){
      * @return {[type]}   [description]
      */
     function w(s){
-      console.log('-> %s', s);
+      console.log('<- %s', s);
       sock.write(s + Message.CRLF);
     };
     /**
@@ -121,7 +124,7 @@ SMTP.prototype.post = function(domain, from, recipients, body, callback){
      */
     var msg = '';
     function parse(line){
-      console.log('<- %s', line);
+      console.log('-> %s', line);
       msg += (line + Message.CRLF);
       if(/^\d+\s/.test(line)){
         response(parseInt(line, 10), msg);
@@ -155,6 +158,9 @@ SMTP.prototype.post = function(domain, from, recipients, body, callback){
  * @return {[type]}              [description]
  */
 SMTP.prototype.send = function(message, callback){
+  if(!(message instanceof Message)){
+    message = new Message(message);
+  }
   var groupByHost = {}, recipients = [];
   if(message.to) recipients.push(message.to);
   if(message.cc) recipients.push(message.cc);
@@ -167,7 +173,7 @@ SMTP.prototype.send = function(message, callback){
   });
   var from = Message.parseAddress(message.from);
   Object.keys(groupByHost).map(function(domain){
-    this.post(domain, from, groupByHost[domain], message.content, callback);
+    this.post(domain, from, groupByHost[domain], message.toString(), callback);
   }.bind(this));
   return this;
 };
@@ -175,5 +181,8 @@ SMTP.prototype.send = function(message, callback){
 
 SMTP.Client = SMTP;
 SMTP.Server = require('./server');
+SMTP.createServer = function(options){
+  return new SMTP.Server(options);
+};
 
 module.exports = SMTP;

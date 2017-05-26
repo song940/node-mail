@@ -7,16 +7,88 @@ const types  = require('./types');
  */
 function MIME(message){
   Stream.call(this);
-  this.buffer = '';
+  this.buffer  = '';
   this.headers = {};
-  this.body = {};
+  this.body    = {};
+  for(var k in message){
+    this[k] = message[k];
+  }
   return this;
 };
 
 MIME.CRLF = '\n';
 MIME.TYPES = types;
 
+/**
+ * [PARSE_STATUS description]
+ * @type {Object}
+ */
+MIME.PARSE_STATUS = {
+  BODY        : 0x00,
+  PART_HEADER : 0x01,
+  PART_BODY   : 0x02,
+  END         : -1
+};
+
 util.inherits(MIME, Stream);
+
+MIME.q = function(address){
+  return '<' + address + '>';
+};
+
+MIME.kv = function(key, value){
+  return [ key, value ].join(': ');
+};
+
+MIME.trim = function(s){
+  return s.replace(/^"|"$/, '');
+}
+
+MIME.filter = function(str){
+  return !!str.trim();
+};
+
+/**
+ * [extension description]
+ * @param  {[type]} type [description]
+ * @return {[type]}      [description]
+ */
+MIME.extension = function(type){
+  return MIME.TYPES[ type ].extensions;
+};
+
+/**
+ * [lookup description]
+ * @param  {[type]} filename [description]
+ * @return {[type]}          [description]
+ */
+MIME.lookup = function(filename){
+  var ext = filename.replace(/.*[\.\/\\]/, '').toLowerCase();
+  return Object.keys(MIME.TYPES).filter(function(type){
+    var def = MIME.TYPES[ type ];
+    return ~(def.extensions||[]).indexOf(ext);
+  })[0];
+};
+
+
+var aliaes = {
+  from: 'From',
+  to  : 'To'  ,
+  cc  : 'Cc'  ,
+  bcc : 'Bcc' ,
+};
+
+Object.keys(aliaes).forEach(function(alias){
+  MIME.prototype.__defineGetter__(alias, function(){
+    return this.headers[ aliaes[alias] ];
+  });
+
+  MIME.prototype.__defineSetter__(alias, function(from){
+    this.headers[ aliaes[alias] ] = from;
+  });
+});
+
+
 
 /**
  * [function description]
@@ -41,7 +113,7 @@ MIME.prototype.write = function(buf){
   if(sp > -1){
     var str = this.buffer.substr(0, sp);
     this.headers = MIME.parseHeaders(str);
-    this.emit('header', this.headers);
+    this.emit('headers', this.headers);
     this.buffer = this.buffer.substr(sp);
   }
   return this;
@@ -57,29 +129,19 @@ MIME.prototype.end = function(buf){
   var contentType = this.headers[ 'Content-Type' ];
   this.body = MIME.parseBody(this.buffer, contentType);
   this.emit('body', this.body);
+  this.emit('end', this);
   return this;
 };
 
-
-/**
- * [lookup description]
- * @param  {[type]} filename [description]
- * @return {[type]}          [description]
- */
-MIME.lookup = function(filename){
-  var ext = filename.replace(/.*[\.\/\\]/, '').toLowerCase();
-  return Object.keys(MIME.TYPES).filter(function(type){
-    var def = MIME.TYPES[ type ];
-    return ~(def.extensions||[]).indexOf(ext);
-  })[0];
-};
-/**
- * [extension description]
- * @param  {[type]} type [description]
- * @return {[type]}      [description]
- */
-MIME.extension = function(type){
-  return MIME.TYPES[ type ].extensions;
+/***/
+MIME.prototype.toString = function(){
+  var message = [], self = this;
+  Object.keys(this.headers).forEach(function(header){
+    message.push(MIME.kv(header, self.headers[ header ]));
+  });
+  message.push(null);
+  message.push(this.body._);
+  return message.join('\n');
 };
 
 /**
@@ -93,25 +155,10 @@ MIME.parse = function(content, contentType){
   if(typeof contentType === 'undefined'){
     return mime.end(content);
   }else{
-    return mime.parseBody(content, contentType); 
+    return mime.parseBody(content, contentType);
   }
 };
 
-MIME.q = function(address){
-  return '<' + address + '>';
-};
-
-MIME.kv = function(key, value){
-  return [ key, value ].join(':');
-};
-
-MIME.trim = function(s){
-  return s.replace(/^"|"$/, '');
-}
-
-MIME.filter = function(str){
-  return !!str.trim();
-};
 /**
  * [parseAddress description]
  * @param  {[type]} address [description]
@@ -181,17 +228,6 @@ MIME.parseHeaderValue = function(str){
 };
 
 /**
- * [PARSE_STATUS description]
- * @type {Object}
- */
-MIME.PARSE_STATUS = {
-  BODY        : 0x00,
-  PART_HEADER : 0x01,
-  PART_BODY   : 0x02,
-  END         : -1
-};
-
-/**
  * [end description]
  * @param  {[type]} buf [description]
  * @return {[type]}     [description]
@@ -227,7 +263,7 @@ MIME.parseBody = function(content, contentType){
         h += line + MIME.CRLF;
         break;
       case MIME.PARSE_STATUS.PART_BODY:
-        body[j].body += line;  
+        body[j].body += line;
         break;
     }
   }
@@ -235,4 +271,3 @@ MIME.parseBody = function(content, contentType){
 };
 
 module.exports = MIME;
-
