@@ -13,9 +13,7 @@ $ npm i mail2
 ````javascript
 const smtp = require('mail2/smtp');
 
-const client = new smtp.Client({});
-
-client.send({
+smtp.send({
   from: 'lsong@lsong.org',
   to  : 'x-mail@lsong.org',
 
