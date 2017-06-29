@@ -182,7 +182,7 @@ MIME.parseAddress = function(address){
  */
 MIME.parseHeaders = function(header){
   return header
-  .replace(/\n\t/g, '')
+  .replace(/\n\s+/g, '')
   .split(MIME.CRLF)
   .filter(MIME.filter)
   .map(MIME.parseHeader)
