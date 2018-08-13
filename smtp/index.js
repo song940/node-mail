@@ -3,14 +3,13 @@ const dns     = require('dns');
 const tcp     = require('net');
 const Message = require('../mime');
 
-Message.CRLF = '\r\n';
-
 /**
  * [SMTP description]
  * @param {[type]} options [description]
  * @docs https://tools.ietf.org/html/rfc821
  */
 function SMTP(options){
+  Object.assign(this, options);
   return this;
 }
 /**
@@ -35,6 +34,7 @@ function connectMx(domain, callback){
   };
 
   dns.resolveMx(domain, function(err, records){
+    if(err) throw err;
     endpoints = (records || []).sort(function(a, b){
       return a.priority - b. priority;
     }).map(function(mx){
@@ -49,8 +49,8 @@ function connectMx(domain, callback){
  * @param  {[type]} message [description]
  * @return {[type]}         [description]
  */
-SMTP.send = function(message){
-  var client = new SMTP.Client();
+SMTP.send = function(message, options){
+  var client = new SMTP.Client(options);
   return client.send(message);
 };
 /**

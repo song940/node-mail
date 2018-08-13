@@ -16,7 +16,7 @@ function MIME(message){
   return this;
 };
 
-MIME.CRLF = '\n';
+MIME.CRLF = '\r\n';
 MIME.TYPES = types;
 
 /**
@@ -113,6 +113,7 @@ MIME.prototype.write = function(buf){
   if(sp > -1){
     var str = this.buffer.substr(0, sp);
     this.headers = MIME.parseHeaders(str);
+    console.log(this.headers);
     this.emit('headers', this.headers);
     this.buffer = this.buffer.substr(sp);
   }
@@ -133,7 +134,9 @@ MIME.prototype.end = function(buf){
   return this;
 };
 
-/***/
+/**
+ * toString
+*/
 MIME.prototype.toString = function(){
   var message = [], self = this;
   Object.keys(this.headers).forEach(function(header){
@@ -141,7 +144,7 @@ MIME.prototype.toString = function(){
   });
   message.push(null);
   message.push(this.body._);
-  return message.join('\n');
+  return message.join(MIME.CRLF);
 };
 
 /**
@@ -238,6 +241,10 @@ MIME.parseBody = function(content, contentType){
   var lines = (content || '').toString().split(MIME.CRLF);
   if(typeof contentType === 'string'){
     contentType = MIME.parseHeaderValue(contentType);
+  }
+  if(!contentType || contentType._ !== 'multipart/alternative'){
+    body._ = content;
+    return body;
   }
   while(lines.length){
     line = lines.shift();

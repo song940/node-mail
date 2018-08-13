@@ -2,8 +2,8 @@ const smtp = require('../../smtp');
 
 smtp.send({
   headers: {
-    From   : 'from@lsong.org',
-    To     : 'to@lsong.org'  ,
+    From   : 'hi@lsong.org',
+    To     : 'liusong02@localhost'  ,
     Subject: 'welcome mail'
   },
   body: { _: 'hello' }

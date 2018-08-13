@@ -12,7 +12,7 @@ const message = new Message();
 // message.body = { _: 'hello' };
 
 message.on('headers', function(headers){
-  // console.log(headers);
+  console.log(headers);
 });
 
 message.on('body', function(msg){
@@ -34,7 +34,7 @@ message.on('body', function(msg){
 //   content: '',
 // });
 //
-fs.createReadStream('./docs/smtp-163.txt').pipe(message);
+fs.createReadStream('./docs/smtp-qq.txt').pipe(message);
 // const message = Message.parse(fs.readFileSync('./docs/smtp-qq.txt', 'utf8'));
 // console.log(message);
 
