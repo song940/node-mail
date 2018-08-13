@@ -267,6 +267,21 @@ MIME.parseBody = function(content, contentType){
         break;
     }
   }
+  const { _, ...parts } = body;
+  Object.keys(parts).forEach(n => {
+    const part = parts[n];
+    const { headers, body } = part;
+    const { _: type } = headers['Content-Type'];
+    const { _: encoding } = headers['Content-Transfer-Encoding'];
+    part.raw = body;
+    part.body = Buffer.from(body, encoding);
+    switch(type){
+      case 'text/plain':
+      case 'text/html':
+        part.body = part.body.toString();
+        break;
+    }
+  });
   return body;
 };
 
