@@ -1,6 +1,8 @@
 const fs 	  = require('fs');
 const Message = require('../mime');
 
+Message.CRLF = '\n';
+
 const message = new Message();
 
 // message.from = 'hi@lsong.org';

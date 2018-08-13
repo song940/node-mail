@@ -12,6 +12,8 @@ describe('MIME', function(){
 
     var part = new MIME();
 
+    MIME.CRLF = '\n';
+
     part.on('header', function(headers){
       assert.equal(headers['Mime-Version']._, '1.0');
       assert.equal(headers['Subject']._, 'test');
@@ -36,7 +38,7 @@ describe('MIME', function(){
     assert.equal(mime.headers['Message-ID']._, '<tencent_4F34D055476789304B5F8318@qq.com>');
     assert.equal(mime.body._, 'This is a multi-part message in MIME format.');
     assert.equal(mime.body[1].headers['Content-Transfer-Encoding']._, 'base64');
-    assert.equal(mime.body[1].body, 'PGRpdj50ZXN0IG1haWw8L2Rpdj4=');
+    assert.equal(mime.body[1].body, '<div>test mail</div>');
   });
 
   it('MIME#lookup', function(){

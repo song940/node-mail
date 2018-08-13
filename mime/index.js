@@ -113,7 +113,6 @@ MIME.prototype.write = function(buf){
   if(sp > -1){
     var str = this.buffer.substr(0, sp);
     this.headers = MIME.parseHeaders(str);
-    console.log(this.headers);
     this.emit('headers', this.headers);
     this.buffer = this.buffer.substr(sp);
   }
