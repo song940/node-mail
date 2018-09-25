@@ -1,6 +1,6 @@
 {
   "name": "mail2",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "mail for nodejs",
   "main": "index.js",
   "directories": {
@@ -26,6 +26,7 @@
     "imap"
   ],
   "dependencies": {
-    "mocha": "^3.2.0"
+    "mime2": "^0.0.2",
+    "smtp2": "^0.0.2"
   }
 }
